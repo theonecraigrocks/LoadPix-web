@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Black old-school semi truck in a lime green camera lens">
+<rect width="256" height="256" rx="44" fill="#090f0b"/>
+<circle cx="128" cy="125" r="110" fill="#101b13" stroke="#a3ff12" stroke-width="10"/>
+<circle cx="128" cy="125" r="96" fill="none" stroke="#5f7b5d" stroke-width="3"/>
+<path d="M74 150Q43 117 62 73Q61 109 93 111Q86 74 105 53Q112 97 120 107L109 164Z" fill="#3f8730"/>
+<path d="M177 151Q211 116 189 70Q192 102 166 117Q183 84 168 55Q159 100 146 111L150 169Z" fill="#a3ff12"/>
+<path d="M90 112L92 48H101L103 115ZM155 113L157 48H166L164 116Z" fill="#97aca1"/>
+<path d="M63 160L84 127L95 124L103 83Q129 67 151 83L163 127L176 133L195 162L193 218H62Z" fill="#222c27" stroke="#80938a" stroke-width="3"/>
+<path d="M104 89Q126 82 150 89L157 127H97Z" fill="#070d0a" stroke="#bac9c1" stroke-width="3"/>
+<path d="M108 95L123 92V122H102ZM131 92L146 95L151 122H131Z" fill="#385646"/>
+<path d="M91 136L102 135V148L79 153ZM155 135L169 136L183 153L157 148Z" fill="#c2d0cc"/>
+<path d="M109 138H148L153 208H103Z" fill="#070908" stroke="#c5d4cb" stroke-width="4"/>
+<path d="M117 145V198M127 145V198M137 145V198" stroke="#607b6c" stroke-width="4"/>
+<path d="M65 166Q66 150 89 151L100 159L102 208H63ZM191 166Q190 150 166 151L155 159L153 208H193Z" fill="#050807" stroke="#c1c9c4" stroke-width="3"/>
+<path d="M74 163H95V179H74ZM161 163H182V179H161Z" fill="#a3ff12"/>
+<path d="M61 207H195V220H61Z" fill="#8fa89c"/>
+<path d="M68 218H97V235H68ZM159 218H188V235H159Z" fill="#131b16"/>
+<path d="M73 225H183" stroke="#a3ff12" stroke-width="4"/>
+</svg>

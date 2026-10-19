@@ -1,0 +1,77 @@
+name: Verify and publish LoadPix web
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: loadpix-pages
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse JavaScript
+        run: |
+          node --check app.js
+          node --check core.mjs
+          node --check db.mjs
+          node --check sw.js
+      - name: Run load session and message tests
+        run: node --test tests/*.test.mjs
+      - name: Validate web assets and complete PNG
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, struct, xml.etree.ElementTree as ET
+          root=pathlib.Path(".")
+          manifest=json.loads((root/"manifest.webmanifest").read_text())
+          assert manifest["display"] == "standalone"
+          ET.parse(root/"icon.svg")
+          blob=(root/"apple-touch-icon.png").read_bytes()
+          assert blob[:8] == b"\x89PNG\r\n\x1a\n"
+          assert struct.unpack(">II", blob[16:24]) == (180,180)
+          position=8
+          finished=False
+          while position < len(blob):
+              length=struct.unpack(">I",blob[position:position+4])[0]
+              marker=blob[position+4:position+8]
+              position+=12+length
+              assert position <= len(blob), f"Incomplete PNG {marker}"
+              if marker == b"IEND":
+                  finished=True
+                  break
+          assert finished and position == len(blob), "Incomplete PNG IEND"
+          for file in ("index.html","styles.css","app.js","core.mjs","db.mjs","sw.js","icon.svg","manifest.webmanifest"):
+              assert (root/file).is_file(), file
+          print("Verified web app shell and complete 180x180 PNG.")
+          PY
+  deploy:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare web-only public files
+        run: |
+          mkdir -p site
+          cp index.html styles.css app.js core.mjs db.mjs sw.js icon.svg apple-touch-icon.png manifest.webmanifest site/
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Package website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4

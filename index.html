@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101713">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LoadPix">
+  <meta name="description" content="Keep pickup and delivery photos organized on your phone. Share them to dispatch with your approval.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <title>LoadPix · Dispatch photo organizer</title>
+</head>
+<body>
+  <div id="splash" class="splash" aria-label="LoadPix loading">
+    <div class="splash-top">LoadPix</div>
+    <img class="splash-art" src="./icon.svg" alt="An old-school semi truck framed inside a camera lens">
+    <div class="splash-bottom">Powered by... <strong>CRAVA</strong></div>
+  </div>
+  <header class="app-header">
+    <button id="home-link" class="brand" type="button" aria-label="LoadPix home"><img src="./icon.svg" alt=""> <span>LoadPix<small>ONE LOAD AT A TIME.</small></span></button>
+    <span class="tag">iPHONE WEB · V1 PREVIEW</span>
+  </header>
+  <main id="app" class="container" aria-live="off">
+    <div class="card"><p>Loading your saved LoadPix sessions…</p></div>
+  </main>
+  <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+  <div id="notice" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
