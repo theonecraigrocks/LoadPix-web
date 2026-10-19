@@ -1,25 +1,27 @@
 # LoadPix — free iPhone web app
 
-A free, installable Safari web app for truck drivers to organize their pickup and delivery photos and prepare a dispatch message.
+A free, installable Safari web app for truck drivers to organize pickup/delivery photos and prepare dispatch messages.
 
-## Open on iPhone
-After GitHub Pages is enabled, use the live site (not this GitHub repository page):
-**https://theonecraigrocks.github.io/LoadPix-web/**
+## Install on iPhone
+**Once GitHub Pages is enabled**, visit:
+https://theonecraigrocks.github.io/LoadPix-web/
 
-In Safari tap **Share → Add to Home Screen → Add**. You can then start Pickup/Delivery sessions, take photos, save load details and share images in batches.
+Open in Safari → **Share → Add to Home Screen → Add**.
 
-## Privacy and sharing
-- Captured photos and session data are stored on the **driver's own device**, in browser storage (IndexedDB). The web app does not upload pictures or driver information to a server.
-- **There is no automatic MMS sending on iPhone.** Use the iOS share sheet, choose Messages, check the phone number, message body and attachments, then tap Send. Sometimes Safari omits the text or refuses a batch, so the app provides copy-text and photo-saving fallback.
-- Browser storage can be cleared by iOS or the user, especially if the web app or Safari data is deleted. This is **not a reliable permanent backup**. Confirm dispatch receives all required pictures and keep important originals elsewhere.
-- `@ellerdaddy` is the donation recipient handle provided by the developer, but the constructed PayPal.me destination **has not been verified**. Confirm the recipient before donating.
-- The iPhone UI/share-sheet flow **has not been device-tested**. Report bugs during friend testing.
+## Private, on-device sessions
+Photos and session data are saved to each device's IndexedDB. The site does not upload photos or driver information to a server. Browser storage can be removed by iOS or cleared manually: **do not treat it as a permanent backup**.
 
-## Open source
-This repository contains **only the LoadPix web app and its tests**. The Android app is housed in a different **private** repository. This public website requires no Apple Developer membership, TestFlight, or Mac.
+## iPhone messages
+iOS web apps cannot silently send MMS or preselect the Messages recipient. The driver must choose Messages in the share sheet, verify the number and attachments, and tap Send. iPhone Safari may drop the message body; copy-and-paste fallback is provided. A share-sheet result does not confirm delivery.
+
+## Developer donation
+The supplied PayPal handle is @ellerdaddy. The PayPal.me destination is **not independently verified**; confirm recipient before donating.
+
+## Status
+The PWA source and automated logic checks exist. **Actual camera capture and file sharing on a physical iPhone have not been tested.** This is a friend-testing preview, not an App Store release. Android source remains in a separate private repository.
+
+## Free deployment
+In this public repository choose **Settings → Pages → Build and deployment → Source = GitHub Actions**. Then run the "Verify and publish LoadPix web" workflow (or push a commit). Its Ubuntu runner generates a complete Home Screen PNG, verifies JS/core tests, and publishes **only** the nine site files over HTTPS. No Apple account or macOS runner needed.
 
 ## Development
-Run `python3 -m http.server 8080` then open `http://localhost:8080` to test locally on a PC. Run `node --test tests/*.test.mjs` for logic checks.
-
-## Hosting
-GitHub Pages needs to be configured once: **Settings → Pages → Build and deployment → Source = GitHub Actions**. The workflow `.github/workflows/deploy.yml` tests and publishes static files over HTTPS. If deployment isn't enabled yet, the website URL above will not work.
+Run `python3 tools/generate-icon.py` before running `python3 -m http.server 8080`. Run `node --test tests/*.test.mjs` for logic tests.

@@ -27,10 +27,12 @@ jobs:
           node --check sw.js
       - name: Run load session and message tests
         run: node --test tests/*.test.mjs
+      - name: Generate iPhone home-screen icon
+        run: python3 tools/generate-icon.py
       - name: Validate web assets and complete PNG
         run: |
           python3 - <<'PY'
-          import json, pathlib, struct, xml.etree.ElementTree as ET
+          import json, pathlib, struct, xml.etree.ElementTree as ET, zlib
           root=pathlib.Path(".")
           manifest=json.loads((root/"manifest.webmanifest").read_text())
           assert manifest["display"] == "standalone"
@@ -43,6 +45,9 @@ jobs:
           while position < len(blob):
               length=struct.unpack(">I",blob[position:position+4])[0]
               marker=blob[position+4:position+8]
+              data=blob[position+8:position+8+length]
+              checksum=struct.unpack(">I",blob[position+8+length:position+12+length])[0]
+              assert zlib.crc32(marker+data) & 0xffffffff == checksum, f"Invalid PNG CRC {marker}"
               position+=12+length
               assert position <= len(blob), f"Incomplete PNG {marker}"
               if marker == b"IEND":
@@ -62,8 +67,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare web-only public files
+      - name: Build web-only site and PNG
         run: |
+          python3 tools/generate-icon.py
           mkdir -p site
           cp index.html styles.css app.js core.mjs db.mjs sw.js icon.svg apple-touch-icon.png manifest.webmanifest site/
       - name: Configure GitHub Pages
