@@ -1,8 +1,10 @@
 import {CATEGORIES,heading,normalizePhone,normalizeBOL,newSession,missingPhotos,messageBody,batchCount} from "./core.mjs";
 import {openLoadPixDB,allSessions,loadSession,saveSession,loadPhoto,savePhoto,removePhoto,deleteSessions} from "./db.mjs";
+import {extractPaperwork} from "./paperwork.mjs";
 
 const app = document.getElementById("app");
 const inputCamera = document.getElementById("camera-input");
+const inputGallery = document.getElementById("gallery-input");
 const notice = document.getElementById("notice");
 const PRIMARY = "btn";
 const SECONDARY = "btn secondary";
@@ -265,15 +267,19 @@ async function renderSession(id) {
       actions.append(
         button("View",()=>viewPhoto(data,photo),"btn secondary inline-btn",!data),
         button("Retake",()=>takePhoto(session.id,category,photo.id),"btn secondary inline-btn"),
+        button("Replace from phone",()=>choosePhoto(session.id,category,photo.id),"btn secondary inline-btn"),
         button("Remove",async()=>{
           if(!window.confirm("Remove this photo from LoadPix?"))return;
           try{await removePhoto(session,photo.id);render();}catch(e){fail(e);}
         },"btn ghost inline-btn")
       );
+      if (category.toLowerCase().includes("paperwork")) actions.append(
+        button("Scan paperwork",()=>scanPaperworkPhoto(session.id, data?.blob),"btn secondary inline-btn",!data)
+      );
       box.append(h("div",{className:"photo"},picture,actions));
     }
-    box.append(button(photos.length?"+ Add another photo":"Take photo",
-      ()=>takePhoto(session.id,category,null),SECONDARY,session.photos.length>=20));
+    box.append(button("Take photo",()=>takePhoto(session.id,category,null),PRIMARY,session.photos.length>=20));
+    box.append(button("Choose photo from phone",()=>choosePhoto(session.id,category,null),SECONDARY,session.photos.length>=20));
     app.append(box);
   }
   const share=card(h("h2",{text:"Share photos to dispatch"}));
@@ -326,22 +332,96 @@ async function renderSession(id) {
   app.append(share,button("Session history",()=>nav("history"),SECONDARY));
 }
 function takePhoto(sessionID,category,replaceID){
-  state.capture={sessionID,category,replaceID};
+  state.capture={sessionID,category,replaceID,source:"camera"};
   inputCamera.value="";
   inputCamera.click();
 }
-inputCamera.addEventListener("change",async()=>{
-  const file=inputCamera.files?.[0],target=state.capture;
+function choosePhoto(sessionID,category,replaceID){
+  state.capture={sessionID,category,replaceID,source:"gallery"};
+  inputGallery.value="";
+  inputGallery.click();
+}
+async function importedPhoto(input,source) {
+  const file=input.files?.[0],target=state.capture;
   state.capture=null;
-  if(!file || !target)return;
+  if(!file||!target||target.source!==source)return;
   try{
     const session=await loadSession(target.sessionID);
     if(!session)throw new Error("This session was deleted.");
     await savePhoto(session,file,target.category,target.replaceID);
     alertStatus("Photo saved privately on this iPhone.");
-    if(state.page==="session"&&state.sessionID===session.id)render();
+    if(state.page==="session"&&state.sessionID===session.id)await render();
+    if(target.category.toLowerCase().includes("paperwork"))await scanPaperworkPhoto(session.id,file);
   }catch(e){fail(e);}
-});
+}
+inputCamera.addEventListener("change",()=>importedPhoto(inputCamera,"camera"));
+inputGallery.addEventListener("change",()=>importedPhoto(inputGallery,"gallery"));
+
+let ocrModule;
+async function loadOCR(){
+  if(!ocrModule)ocrModule=import("https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.esm.min.js")
+      .catch(e=>{ocrModule=null;throw e;});
+  return ocrModule;
+}
+async function scanPaperworkPhoto(sessionID,blob){
+  if(!blob){alertStatus("Paperwork photo is missing.");return;}
+  alertStatus("Scanning paperwork on your phone. The OCR language model may download on first use...");
+  let worker;
+  try {
+    const {createWorker}=await loadOCR();
+    worker=await createWorker("eng",1,{
+      workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js",
+      corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0",
+      langPath:"https://tessdata.projectnaptha.com/4.0.0"
+    });
+    const result=await worker.recognize(blob);
+    const found=extractPaperwork(result.data?.text||"");
+    if(!found.trailer&&!found.bol4){
+      alertStatus("No clearly labeled trailer or BOL found. Check the photo and enter details manually.");
+      return;
+    }
+    const session=await loadSession(sessionID);
+    if(!session)return;
+    showPaperworkReview(session,found);
+  }catch(error) {
+    console.error("Local OCR failed",error);
+    alertStatus("The paperwork scan couldn't complete. Your photo is saved; enter the fields manually or retry when online.");
+  }finally {if(worker)await worker.terminate().catch(()=>{});}
+}
+function showPaperworkReview(session,found){
+  const dialog=h("dialog");
+  dialog.style.cssText="border:1px solid var(--border);border-radius:20px;padding:20px;max-width:min(94vw,520px);width:100%;background:var(--card);color:var(--ink);box-shadow:0 10px 65px #0008";
+  const panel=stack(
+    h("h2",{text:"Confirm paperwork details"}),
+    para("Scanned locally. Check both fields against the photo before applying. Existing values are not changed until you confirm.","muted small"),
+    ...(found.bolNumber?[para("BOL candidate: "+found.bolNumber,"small")]:[])
+  );
+  const trailerInput=h("input",{type:"text"});trailerInput.value=found.trailer||session.trailer||"";trailerInput.maxLength=60;
+  const bolInput=h("input",{type:"text"});bolInput.value=found.bol4||session.bol4||"";bolInput.inputMode="numeric";bolInput.maxLength=4;
+  panel.append(
+    h("label",{className:"field"},h("span",{text:"Trailer number"}),trailerInput),
+    h("label",{className:"field"},h("span",{text:"BOL last four digits"}),bolInput),
+    button("Apply confirmed details",async()=>{
+      const trailer=trailerInput.value.trim().slice(0,60);
+      const bol4=normalizeBOL(bolInput.value);
+      if(bolInput.value.trim() && bol4.length!==4){alertStatus("Enter exactly four digits for the BOL, or leave blank.");return;}
+      try{
+        const latest=await loadSession(session.id);
+        if(!latest){dialog.close();return;}
+        latest.trailer=trailer;latest.bol4=bol4;
+        await saveSession(latest);
+        dialog.close();
+        if(state.page==="session"&&state.sessionID===session.id)render();
+        alertStatus("Confirmed paperwork details saved.");
+      }catch(e){fail(e);}
+    }),
+    button("Keep current details / Cancel",()=>dialog.close(),SECONDARY)
+  );
+  dialog.append(panel);
+  dialog.addEventListener("close",()=>dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+}
 function viewPhoto(record,photo) {
   if(!record?.blob){alertStatus("This photo could not be loaded.");return;}
   const url=photoURL(record.blob);

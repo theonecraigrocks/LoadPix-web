@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LoadPix">
   <meta name="description" content="Keep pickup and delivery photos organized on your phone. Share them to dispatch with your approval.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -29,6 +29,7 @@
     <div class="card"><p>Loading your saved LoadPix sessions…</p></div>
   </main>
   <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+  <input type="file" id="gallery-input" accept="image/*" hidden>
   <div id="notice" role="status" aria-live="polite"></div>
   <script type="module" src="./app.js"></script>
 </body>

@@ -1,7 +1,7 @@
 name: Verify and publish LoadPix web
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/paperwork-ocr']
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,6 +23,7 @@ jobs:
         run: |
           node --check app.js
           node --check core.mjs
+          node --check paperwork.mjs
           node --check db.mjs
           node --check sw.js
       - name: Run load session and message tests
@@ -54,11 +55,12 @@ jobs:
                   finished=True
                   break
           assert finished and position == len(blob), "Incomplete PNG IEND"
-          for file in ("index.html","styles.css","app.js","core.mjs","db.mjs","sw.js","icon.svg","manifest.webmanifest"):
+          for file in ("index.html","styles.css","app.js","core.mjs","paperwork.mjs","db.mjs","sw.js","icon.svg","manifest.webmanifest"):
               assert (root/file).is_file(), file
           print("Verified web app shell and complete 180x180 PNG.")
           PY
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -71,7 +73,7 @@ jobs:
         run: |
           python3 tools/generate-icon.py
           mkdir -p site
-          cp index.html styles.css app.js core.mjs db.mjs sw.js icon.svg apple-touch-icon.png manifest.webmanifest site/
+          cp index.html styles.css app.js core.mjs paperwork.mjs db.mjs sw.js icon.svg apple-touch-icon.png manifest.webmanifest site/
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Package website

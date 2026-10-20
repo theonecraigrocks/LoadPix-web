@@ -25,3 +25,7 @@ In this public repository choose **Settings → Pages → Build and deployment �
 
 ## Development
 Run `python3 tools/generate-icon.py` before running `python3 -m http.server 8080`. Run `node --test tests/*.test.mjs` for logic tests.
+
+## Paperwork OCR preview
+
+Choose **Take photo** or **Choose photo from phone** in every category. Paperwork and signed-paperwork photos automatically launch an **optional local OCR scan**. A **Scan paperwork** button lets you retry existing photos. OCR suggestions for **trailer number** and **last four digits of BOL** are label-based; they require driver review and explicit confirmation before saving. No guessing from unlabeled numbers. OCR scripts, WebAssembly and the English language model are downloaded from pinned third-party CDN endpoints on first scan; **photos are processed on the device and are not uploaded by the app**. Scanning may fail offline before the engine has been cached, or on incompatible iOS versions; manually editable fields remain available. On-device OCR and Safari sharing still need real-device testing.

@@ -1,5 +1,5 @@
-const CACHE = "loadpix-web-shell-v1";
-const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./core.mjs", "./db.mjs", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png"];
+const CACHE = "loadpix-web-shell-v2";
+const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./core.mjs", "./paperwork.mjs", "./db.mjs", "./manifest.webmanifest", "./icon.svg", "./apple-touch-icon.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
