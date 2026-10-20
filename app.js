@@ -3,14 +3,12 @@ import {openLoadPixDB,allSessions,loadSession,saveSession,loadPhoto,savePhoto,re
 import {extractPaperwork} from "./paperwork.mjs";
 
 const app = document.getElementById("app");
-const inputCamera = document.getElementById("camera-input");
-const inputGallery = document.getElementById("gallery-input");
 const notice = document.getElementById("notice");
 const PRIMARY = "btn";
 const SECONDARY = "btn secondary";
 const state = {
   page: "home", sessionID: null, selected: new Set(), batch: 0,
-  capture: null, urls: [], renderID: 0
+  urls: [], renderID: 0
 };
 let noticeTimer;
 
@@ -33,6 +31,22 @@ function button(text, handler, css = PRIMARY, disabled = false) {
   btn.disabled = disabled;
   btn.addEventListener("click", handler);
   return btn;
+}
+
+/* Real native input covers each visible control; avoids Safari's hidden input restrictions. */
+function photoPicker(label, sessionID, category, replaceID, source, variant = "", disabled = false) {
+  const input = h("input", {type:"file"});
+  input.accept = "image/*";
+  if(source === "camera") input.setAttribute("capture", "environment");
+  input.setAttribute("aria-label", label + " for " + category);
+  input.disabled = disabled;
+  input.addEventListener("change", () => {
+    const photo = input.files?.[0];
+    input.value = "";
+    saveChosenPhoto(photo,{sessionID,category,replaceID}).catch(fail);
+  });
+  return h("label",{className:("btn photo-picker " + variant + (disabled ? " is-disabled" : "")).trim()},
+    h("span",{text:label}),input);
 }
 function para(text, css = "") { return h("p", {className:css, text}); }
 function card(...children) { return h("section", {className:"card"}, children); }
@@ -259,6 +273,13 @@ async function renderSession(id) {
     const photos=session.photos.filter(p=>p.category===category);
     const box=card(h("h3",{text:(photos.length?"✓ ":"○ ")+category}));
     if(!photos.length)box.append(para("Required photo","muted small"));
+    box.append(
+      h("div",{className:"photo-upload-actions"},
+        photoPicker("📷 Take Photo",session.id,category,null,"camera","",session.photos.length>=20),
+        photoPicker("🖼 Add Photo from Gallery",session.id,category,null,"gallery","secondary",session.photos.length>=20)
+      ),
+      para("Both options save a picture inside LoadPix. Neither opens Messages.","muted small")
+    );
     for(const photo of photos){
       const data=photoMap.get(photo.id);
       const picture=h("img");picture.alt="Photo for "+category;
@@ -266,8 +287,8 @@ async function renderSession(id) {
       const actions=h("div",{className:"photo-actions"});
       actions.append(
         button("View",()=>viewPhoto(data,photo),"btn secondary inline-btn",!data),
-        button("Retake",()=>takePhoto(session.id,category,photo.id),"btn secondary inline-btn"),
-        button("Replace from phone",()=>choosePhoto(session.id,category,photo.id),"btn secondary inline-btn"),
+        photoPicker("Retake",session.id,category,photo.id,"camera","secondary inline-btn"),
+        photoPicker("Replace from Gallery",session.id,category,photo.id,"gallery","secondary inline-btn"),
         button("Remove",async()=>{
           if(!window.confirm("Remove this photo from LoadPix?"))return;
           try{await removePhoto(session,photo.id);render();}catch(e){fail(e);}
@@ -278,11 +299,9 @@ async function renderSession(id) {
       );
       box.append(h("div",{className:"photo"},picture,actions));
     }
-    box.append(button("Take photo",()=>takePhoto(session.id,category,null),PRIMARY,session.photos.length>=20));
-    box.append(button("Choose photo from phone",()=>choosePhoto(session.id,category,null),SECONDARY,session.photos.length>=20));
     app.append(box);
   }
-  const share=card(h("h2",{text:"Share photos to dispatch"}));
+  const share=card(h("h2",{text:"Send completed load to dispatch"}));
   share.append(para("Share opens iPhone's sheet. Choose Messages, check the recipient, text and attached photos, then tap Send. LoadPix cannot confirm delivery.","muted small"));
   if(missing.length) {
     share.append(para("Still needed: "+missing.join(", "),"muted small"));
@@ -300,7 +319,7 @@ async function renderSession(id) {
     const canFiles=typeof navigator.canShare==="function"&&navigator.canShare({files});
     share.append(
       para("Group "+(state.batch+1)+" of "+count+" · photos "+(offset+1)+"–"+(offset+photos.length),"eyebrow"),
-      button("Share this group ("+files.length+" photo"+(files.length===1?"":"s")+")",()=>{
+      button("Send to Dispatch — Review in Messages ("+files.length+" photo"+(files.length===1?"":"s")+")",()=>{
         if(!canFiles){alertStatus("This iPhone/browser cannot share photo files from LoadPix. Use the manual steps below.");return;}
         try{
           const result=navigator.share({files,text:messageBody(session)});
@@ -325,37 +344,19 @@ async function renderSession(id) {
     },SECONDARY),
     para(messageBody(session),"stat")
   );
-  const recipient=normalizePhone(loadProfile().dispatch);
-  if(recipient)share.append(button("Open Messages to dispatch (attach photos manually)",
-    ()=>{window.location.href="sms:"+encodeURIComponent(recipient);},SECONDARY));
   share.append(para("If the Share button is unsupported, tap View on each photo and save/share it from Safari, then attach the originals in Messages. All sending requires your approval.","muted small"));
   app.append(share,button("Session history",()=>nav("history"),SECONDARY));
 }
-function takePhoto(sessionID,category,replaceID){
-  state.capture={sessionID,category,replaceID,source:"camera"};
-  inputCamera.value="";
-  inputCamera.click();
+async function saveChosenPhoto(file,{sessionID,category,replaceID}) {
+  if(!file) return; // User cancelled picker without losing existing image.
+  if(!file.type.startsWith("image/")) throw new Error("Choose an image from Photos.");
+  const session=await loadSession(sessionID);
+  if(!session)throw new Error("Load session no longer exists.");
+  await savePhoto(session,file,category,replaceID);
+  alertStatus("Photo added to your LoadPix session. Nothing was sent.");
+  if(state.page==="session"&&state.sessionID===session.id) await render();
+  if(category.toLowerCase().includes("paperwork"))await scanPaperworkPhoto(session.id,file);
 }
-function choosePhoto(sessionID,category,replaceID){
-  state.capture={sessionID,category,replaceID,source:"gallery"};
-  inputGallery.value="";
-  inputGallery.click();
-}
-async function importedPhoto(input,source) {
-  const file=input.files?.[0],target=state.capture;
-  state.capture=null;
-  if(!file||!target||target.source!==source)return;
-  try{
-    const session=await loadSession(target.sessionID);
-    if(!session)throw new Error("This session was deleted.");
-    await savePhoto(session,file,target.category,target.replaceID);
-    alertStatus("Photo saved privately on this iPhone.");
-    if(state.page==="session"&&state.sessionID===session.id)await render();
-    if(target.category.toLowerCase().includes("paperwork"))await scanPaperworkPhoto(session.id,file);
-  }catch(e){fail(e);}
-}
-inputCamera.addEventListener("change",()=>importedPhoto(inputCamera,"camera"));
-inputGallery.addEventListener("change",()=>importedPhoto(inputGallery,"gallery"));
 
 let ocrModule;
 async function loadOCR(){
